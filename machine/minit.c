@@ -3,7 +3,7 @@
 #include "vm.h"
 #include "fp_emulation.h"
 #include "fdt.h"
-#include "uart.h"
+#include "hid.h"
 #include "finisher.h"
 #include "disabled_hart_mask.h"
 #include "htif.h"
@@ -140,7 +140,7 @@ static void wake_harts()
 void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 {
   // Confirm console as early as possible
-  query_uart(dtb);
+  query_hid(dtb);
   query_htif(dtb);
 
   hart_init();
@@ -150,6 +150,7 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
   query_finisher(dtb);
 
   query_mem(dtb);
+  hart_mask = 1;
   query_harts(dtb);
   query_clint(dtb);
   query_plic(dtb);

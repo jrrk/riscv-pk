@@ -221,8 +221,8 @@ do_reset:
   li x8, 0
   li x9, 0
 // save a0 and a1; arguments from previous boot loader stage:
-//  li x10, 0
-//  li x11, 0
+  li x10, 0
+  li x11, 0x10000
   li x12, 0
   li x13, 0
   li x14, 0
@@ -257,6 +257,15 @@ do_reset:
   slli a2, a3, RISCV_PGSHIFT
   add sp, sp, a2
 
+  # Clear BSS segment
+  la a4, _bss_start
+  la a5, _bss_end
+  sub a5, a5, a4      
+2:      
+  STORE zero, 0(a4)
+  addi a4, a4, 8
+  addi a5, a5, -8
+  bgtz a5, 2b
   # Boot on the first unmasked hart
   la a4, disabled_hart_mask
   LOAD a4, 0(a4)

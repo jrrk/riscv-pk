@@ -4,7 +4,7 @@
 #include "atomic.h"
 #include "bits.h"
 #include "vm.h"
-#include "uart.h"
+#include "hid.h"
 #include "finisher.h"
 #include "fdt.h"
 #include "unprivileged_memory.h"
@@ -15,13 +15,13 @@
 
 void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
 {
-  die("machine mode: unhandlable trap %d @ %p", read_csr(mcause), mepc);
+  die("Bad MM trap %d @ %p", read_csr(mcause), mepc);
 }
 
 static uintptr_t mcall_console_putchar(uint8_t ch)
 {
-  if (uart) {
-    uart_putchar(ch);
+  if (hid) {
+    hid_send(ch);
   } else if (htif) {
     htif_console_putchar(ch);
   }
@@ -71,8 +71,8 @@ static void send_ipi(uintptr_t recipient, int event)
 
 static uintptr_t mcall_console_getchar()
 {
-  if (uart) {
-    return uart_getchar();
+  if (hid) {
+    return hid_recv();
   } else if (htif) {
     return htif_console_getchar();
   } else {

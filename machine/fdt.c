@@ -192,7 +192,7 @@ void query_mem(uintptr_t fdt)
   cb.done = mem_done;
   cb.extra = &scan;
 
-  mem_size = 0;
+  mem_size = 0x8000000;
   fdt_scan(fdt, &cb);
   assert (mem_size > 0);
 }
@@ -361,7 +361,7 @@ void query_clint(uintptr_t fdt)
   cb.done = clint_done;
   cb.extra = &scan;
 
-  scan.done = 0;
+  scan.done = 1;
   fdt_scan(fdt, &cb);
   assert (scan.done);
 }
