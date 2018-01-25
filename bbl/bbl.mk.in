@@ -1,3 +1,4 @@
+
 bbl_subproject_deps = \
 	util \
   softfloat \
@@ -23,6 +24,8 @@ raw_logo.o: bbl_logo_file
 
 bbl_logo_file: @BBL_LOGO_FILE@
 	cat $^ | sed 's/$$/\r/' > $@
+
+.PHONY: bbl_payload
 
 bbl_test_srcs =
 
