@@ -48,7 +48,7 @@ void boot_other_hart(uintptr_t unused __attribute__((unused)))
     }
   }
 
-  enter_supervisor_mode(entry, hartid, dtb_output());
+  enter_payload(entry, hartid, dtb_output());
 }
 
 void boot_loader(uintptr_t dtb)
