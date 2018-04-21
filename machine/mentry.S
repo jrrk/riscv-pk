@@ -209,7 +209,7 @@ __redirect_trap:
 __trap_from_machine_mode:
   jal trap_from_machine_mode
   j restore_regs
-
+        
 do_reset:
   li x1, 0
   li x2, 0
@@ -244,6 +244,27 @@ do_reset:
   li x30, 0
   li x31, 0
   csrw mscratch, x0
+
+        li sp, 0x4000FF00
+        li a0, 0x41008000
+#ifdef CLEAR_SCREEN        
+        li t1, 128
+        li t0, 0x2020202020202020
+1:      sd t0, 0(a0)
+        sd t0, 8(a0)
+        sd t0, 16(a0)
+        sd t0, 24(a0)
+        addi a0,a0,32
+        addi t1, t1, -1
+        bnez t1, 1b
+#endif        
+        li a0, 0x41008800 # This says Hello Ariane, halfway up screen
+        li t0, 0x7241206f6c6c6548
+        sd t0, 0(a0)
+        li t0, 0x20202021656e6169
+        sd t0, 8(a0)
+        li t0, 0x2020202020202020
+        sd t0, 16(a0)
 
   # write mtvec and make sure it sticks
   la t0, trap_vector

@@ -88,6 +88,7 @@ void fdt_scan(uintptr_t fdt, const struct fdt_cb *cb)
 {
   struct fdt_header *header = (struct fdt_header *)fdt;
 
+  return; // FDT is disabled in this version
   // Only process FDT that we understand
   if (bswap(header->magic) != FDT_MAGIC ||
       bswap(header->last_comp_version) > FDT_VERSION) return;
@@ -102,6 +103,8 @@ uint32_t fdt_size(uintptr_t fdt)
 {
   struct fdt_header *header = (struct fdt_header *)fdt;
 
+  return 0; // FDT is disabled in this version
+  
   // Only process FDT that we understand
   if (bswap(header->magic) != FDT_MAGIC ||
       bswap(header->last_comp_version) > FDT_VERSION) return 0;
@@ -333,7 +336,7 @@ static void clint_done(const struct fdt_scan_node *node, void *extra)
   assert (!scan->done); // only one clint
 
   scan->done = 1;
-  mtime = (void*)((uintptr_t)scan->reg + 0xbff8);
+  //  mtime = (void*)((uintptr_t)scan->reg + 0xbff8);
 
   for (int index = 0; end - value > 0; ++index) {
     uint32_t phandle = bswap(value[0]);
