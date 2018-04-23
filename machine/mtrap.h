@@ -30,7 +30,7 @@ static inline int xlen()
 }
 
 extern uintptr_t mem_size;
-// extern volatile uint64_t* mtime;
+extern volatile uint64_t* mtime;
 extern volatile uint32_t* plic_priorities;
 extern size_t plic_ndevs;
 
@@ -78,7 +78,6 @@ static inline void wfi()
 #define IPI_SOFT       0x1
 #define IPI_FENCE_I    0x2
 #define IPI_SFENCE_VMA 0x4
-#define IPI_HALT       0x8
 
 #define MACHINE_STACK_SIZE RISCV_PGSIZE
 #define MENTRY_HLS_OFFSET (INTEGER_CONTEXT_SIZE + SOFT_FLOAT_CONTEXT_SIZE)

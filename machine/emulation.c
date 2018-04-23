@@ -163,13 +163,13 @@ static inline int emulate_read_csr(int num, uintptr_t mstatus, uintptr_t* result
     case CSR_TIME:
       if (!((counteren >> (CSR_TIME - CSR_CYCLE)) & 1))
         return -1;
-      *result = counteren;
+      *result = *mtime;
       return 0;
 #if __riscv_xlen == 32
     case CSR_TIMEH:
       if (!((counteren >> (CSR_TIME - CSR_CYCLE)) & 1))
         return -1;
-      *result = counteren >> 32;
+      *result = *mtime >> 32;
       return 0;
 #endif
 #if !defined(__riscv_flen) && defined(PK_ENABLE_FP_EMULATION)

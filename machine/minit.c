@@ -12,7 +12,7 @@
 
 pte_t* root_page_table;
 uintptr_t mem_size;
-// volatile uint64_t* mtime;
+volatile uint64_t* mtime;
 volatile uint32_t* plic_priorities;
 size_t plic_ndevs;
 
@@ -115,7 +115,6 @@ static void prci_test()
 
 static void hart_plic_init()
 {
-  return; // disabled in this version
   // clear pending interrupts
   *HLS()->ipi = 0;
   *HLS()->timecmp = -1ULL;
@@ -133,7 +132,6 @@ static void hart_plic_init()
 
 static void wake_harts()
 {
-  return; // This is disabled in this version
   for (int hart = 0; hart < MAX_HARTS; ++hart)
     if ((((~disabled_hart_mask & hart_mask) >> hart) & 1))
       *OTHER_HLS(hart)->ipi = 1; // wakeup the hart
@@ -152,7 +150,6 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
   query_finisher(dtb);
 
   query_mem(dtb);
-  hart_mask = 1;
   query_harts(dtb);
   query_clint(dtb);
   query_plic(dtb);

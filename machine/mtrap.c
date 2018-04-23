@@ -15,7 +15,7 @@
 
 void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
 {
-  die("Bad MM trap %d @ %p", read_csr(mcause), mepc);
+  die("machine mode: unhandlable trap %d @ %p", read_csr(mcause), mepc);
 }
 
 static uintptr_t mcall_console_putchar(uint8_t ch)
