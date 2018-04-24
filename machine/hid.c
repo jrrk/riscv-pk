@@ -72,8 +72,24 @@ void hid_send_buf(const char *buf, const int32_t len)
   for (i=0; i<len; i++) hid_send(buf[i]);
 }
 
+static inline uint8_t cr2lf(uint8_t ch)
+{
+  if (ch == '\r') ch = '\n'; /* translate CR to LF, because nobody else will */
+  return ch;
+}
+
 uint8_t hid_recv()
 {
+  volatile uint32_t * const keyb_base = (volatile uint32_t*)0x41000000;
+  uint32_t key = keyb_base[0];
+  if ((1<<16) & ~key) /* FIFO not empty */
+    {
+      int ch;
+      *keyb_base = 0;
+      ch = (*keyb_base >> 8) & 127; /* strip off the scan code (default ascii code is UK) */
+      return cr2lf(ch);
+    }
+  
   return 0;
 }
 
