@@ -5,6 +5,8 @@
 #include "fdt.h"
 #include "mtrap.h"
 
+enum {VERBOSE=0};
+
 static inline uint32_t bswap(uint32_t x)
 {
   uint32_t y = (x & 0x00FF00FF) <<  8 | (x & 0xFF00FF00) >>  8;
@@ -42,7 +44,8 @@ static uint32_t *fdt_scan_helper(
   prop.node = node;
 
   while (1) {
-    switch (bswap(lex[0])) {
+    int blex = bswap(lex[0]);
+    switch (blex) {
       case FDT_NOP: {
         lex += 1;
         break;
@@ -55,29 +58,47 @@ static uint32_t *fdt_scan_helper(
         if (node && !strcmp(prop.name, "#address-cells")) { node->address_cells = bswap(lex[3]); }
         if (node && !strcmp(prop.name, "#size-cells"))    { node->size_cells    = bswap(lex[3]); }
         lex += 3 + (prop.len+3)/4;
+        if (VERBOSE) printm("cb->prop(%p, %p);\n", &prop, cb->extra);
         cb->prop(&prop, cb->extra);
         break;
       }
       case FDT_BEGIN_NODE: {
         uint32_t *lex_next;
-        if (!last && node && cb->done) cb->done(node, cb->extra);
+        if (!last && node && cb->done)
+          {
+            if (VERBOSE) printm("cb->done(%p, %p);\n", node, cb->extra);
+            cb->done(node, cb->extra);
+          }
         last = 1;
         child.name = (const char *)(lex+1);
-        if (cb->open) cb->open(&child, cb->extra);
+        if (cb->open)
+          {
+            if (VERBOSE) printm("cb->open(%p, %p);\n", &child, cb->extra);
+            cb->open(&child, cb->extra);
+          }
         lex_next = fdt_scan_helper(
           lex + 2 + strlen(child.name)/4,
           strings, &child, cb);
+        if (VERBOSE) printm("cb->close(%p, %p);\n", &child, cb->extra);
         if (cb->close && cb->close(&child, cb->extra) == -1)
           while (lex != lex_next) *lex++ = bswap(FDT_NOP);
         lex = lex_next;
         break;
       }
       case FDT_END_NODE: {
-        if (!last && node && cb->done) cb->done(node, cb->extra);
+        if (!last && node && cb->done)
+          {
+            if (VERBOSE) printm("cb->done(%p, %p);\n", node, cb->extra);
+            cb->done(node, cb->extra);
+          }
         return lex + 1;
       }
       default: { // FDT_END
-        if (!last && node && cb->done) cb->done(node, cb->extra);
+        if (!last && node && cb->done)
+          {
+            if (VERBOSE) printm("cb->done(%p, %p);\n", node, cb->extra);
+            cb->done(node, cb->extra);
+          }
         return lex;
       }
     }
@@ -306,11 +327,14 @@ static void clint_open(const struct fdt_scan_node *node, void *extra)
   scan->compat = 0;
   scan->reg = 0;
   scan->int_value = 0;
+  printm("clint_open(%p, %p);\n", node, extra);
+  printm("scan->reg = %x, scan->int_value=%x, scan->int_len=%d\n", scan->reg, scan->int_value, scan->int_len);
 }
 
 static void clint_prop(const struct fdt_scan_prop *prop, void *extra)
 {
   struct clint_scan *scan = (struct clint_scan *)extra;
+  printm("clint_prop(%s, %x, %s);\n", prop->name, prop->value[0], prop->node->name);
   if (!strcmp(prop->name, "compatible") && fdt_string_list_index(prop, "riscv,clint0") >= 0) {
     scan->compat = 1;
   } else if (!strcmp(prop->name, "reg")) {
@@ -318,6 +342,7 @@ static void clint_prop(const struct fdt_scan_prop *prop, void *extra)
   } else if (!strcmp(prop->name, "interrupts-extended")) {
     scan->int_value = prop->value;
     scan->int_len = prop->len;
+    printm("scan->reg = %x, scan->int_value=%x, scan->int_len=%d\n", scan->reg, scan->int_value, scan->int_len);
   }
 }
 
@@ -328,6 +353,10 @@ static void clint_done(const struct fdt_scan_node *node, void *extra)
   const uint32_t *end = value + scan->int_len/4;
 
   if (!scan->compat) return;
+
+  printm("clint_done(%p, %p);\n", node, extra);
+  printm("scan->reg = %x, scan->int_value=%x, scan->int_len=%d\n", scan->reg, scan->int_value, scan->int_len);
+
   assert (scan->reg != 0);
   assert (scan->int_value && scan->int_len % 16 == 0);
   assert (!scan->done); // only one clint
@@ -355,6 +384,8 @@ void query_clint(uintptr_t fdt)
   struct fdt_cb cb;
   struct clint_scan scan;
 
+  printm("query_clint\n");
+  
   memset(&cb, 0, sizeof(cb));
   cb.open = clint_open;
   cb.prop = clint_prop;

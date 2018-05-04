@@ -5,6 +5,43 @@
 #include "mtrap.h"
 #include <limits.h>
 
+__attribute__((noinline))
+DECLARE_EMULATION_FUNC(emulate_load_reserved)
+{
+#if 0  
+  uintptr_t rs1_val = GET_RS1(insn, regs);
+  uint64_t *src, *dst;
+  
+  switch(insn)
+    {
+    case 0x1004b72f:
+    case 0x1004b7af:
+    case 0x1009372f:
+      {
+        /* lr.d a?,(s?) */
+        /* Here we have a quick hack on the basis only the Linux kernel will use lr.d */
+        rs1_val -= 0xffffffe000000000;
+        rs1_val += 0x0000000080200000;
+        //        printm("emulate_load_reserved(%p) due to %lx from pc=%p\n", rs1_val, insn, mepc);
+        src = (uint64_t *)rs1_val;
+        SET_RD(insn, regs, *src);
+        break;
+      }
+    case 0x1af936af:
+      {
+        /* sc.d.rl a3,a5,(s2) */
+        uintptr_t rs2_val = GET_RS2(insn, regs);
+        dst = (uint64_t *)rs2_val;
+        SET_RD(insn, regs, *dst);
+        *dst = rs1_val;
+        break;
+      }
+    default:
+    }
+#endif
+      return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+}
+
 static DECLARE_EMULATION_FUNC(emulate_rvc)
 {
 #ifdef __riscv_compressed
@@ -89,7 +126,7 @@ void illegal_insn_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
        "  .word truly_illegal_insn\n"
 #endif
        "  .word truly_illegal_insn\n"
-       "  .word truly_illegal_insn\n"
+       "  .word emulate_load_reserved\n"
 #if !defined(__riscv_muldiv)
        "  .word emulate_mul_div\n"
 #else
