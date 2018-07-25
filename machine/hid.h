@@ -5,9 +5,17 @@
 
 #include <stdint.h>
 
-#define HID_VGA 0x2000
-#define HID_LED 0x400F
-#define HID_DIP 0x401F
+enum { clint_base_addr = 0x02000000,
+        plic_base_addr = 0x0c000000,
+        bram_base_addr = 0x40000000,
+          sd_base_addr = 0x40010000,        
+          sd_bram_addr = 0x40018000,
+         eth_base_addr = 0x40020000,
+        keyb_base_addr = 0x40030000,
+        uart_base_addr = 0x40034000,
+         vga_base_addr = 0x40038000,
+        ddr_base_addr  = 0x80000000
+      };
 
 extern size_t hid;
 

@@ -1,5 +1,4 @@
 machine_subproject_deps = \
-  softfloat \
 
 machine_hdrs = \
   atomic.h \
@@ -7,8 +6,6 @@ machine_hdrs = \
   fdt.h \
   emulation.h \
   encoding.h \
-  fp_emulation.h \
-  htif.h \
   mcall.h \
   mtrap.h \
   hid.h \
@@ -20,15 +17,11 @@ machine_c_srcs = \
   fdt.c \
   mtrap.c \
   minit.c \
-  htif.c \
   emulation.c \
   muldiv_emulation.c \
-  fp_emulation.c \
-  fp_ldst.c \
   hid.c \
   finisher.c \
   misaligned_ldst.c \
 
 machine_asm_srcs = \
   mentry.S \
-  fp_asm.S \

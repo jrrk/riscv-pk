@@ -37,6 +37,10 @@ DECLARE_EMULATION_FUNC(emulate_rvc_2);
   int mask = (1 << (5+LOG_REGBYTES)) - (1 << LOG_REGBYTES); \
   (uintptr_t*)((uintptr_t)regs + (SHIFT_RIGHT(insn, (pos) - LOG_REGBYTES) & (mask))); \
 })
+#define GET_REG32(insn, pos, regs) ({ \
+  int mask = (1 << (5+LOG_REGBYTES)) - (1 << LOG_REGBYTES); \
+  (volatile uint32_t *)((uintptr_t)regs + (SHIFT_RIGHT(insn, (pos) - LOG_REGBYTES) & (mask))); \
+})
 #define GET_RS1(insn, regs) (*GET_REG(insn, SH_RS1, regs))
 #define GET_RS2(insn, regs) (*GET_REG(insn, SH_RS2, regs))
 #define GET_RS1S(insn, regs) (*GET_REG(RVC_RS1S(insn), 0, regs))

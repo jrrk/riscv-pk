@@ -2,8 +2,6 @@
 
 #include "pk.h"
 #include "config.h"
-#include "syscall.h"
-#include "mmap.h"
 
 static void handle_illegal_instruction(trapframe_t* tf)
 {

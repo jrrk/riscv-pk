@@ -6,7 +6,6 @@
 #include "hid.h"
 #include "finisher.h"
 #include "disabled_hart_mask.h"
-#include "htif.h"
 #include <string.h>
 #include <limits.h>
 
@@ -25,7 +24,7 @@ static void mstatus_init()
   // Enable user/supervisor use of perf counters
   if (supports_extension('S'))
     write_csr(scounteren, -1);
-  write_csr(mcounteren, -1);
+  //  write_csr(mcounteren, -1); // - Hack alert
 
   // Enable software interrupts
   write_csr(mie, MIP_MSIP);
@@ -45,6 +44,7 @@ static void delegate_traps()
   uintptr_t exceptions =
     (1U << CAUSE_MISALIGNED_FETCH) |
     (1U << CAUSE_FETCH_PAGE_FAULT) |
+//    (1U << CAUSE_ILLEGAL_INSTRUCTION) |
     (1U << CAUSE_BREAKPOINT) |
     (1U << CAUSE_LOAD_PAGE_FAULT) |
     (1U << CAUSE_STORE_PAGE_FAULT) |
@@ -64,15 +64,10 @@ static void fp_init()
 
   assert(read_csr(mstatus) & MSTATUS_FS);
 
-#ifdef __riscv_flen
-  for (int i = 0; i < 32; i++)
-    init_fp_reg(i);
-  write_csr(fcsr, 0);
-#else
   uintptr_t fd_mask = (1 << ('F' - 'A')) | (1 << ('D' - 'A'));
   clear_csr(misa, fd_mask);
   assert(!(read_csr(misa) & fd_mask));
-#endif
+
 }
 
 hls_t* hls_init(uintptr_t id)
@@ -100,6 +95,7 @@ static void plic_init()
     plic_priorities[i] = 1;
 }
 
+#if 0
 static void prci_test()
 {
   assert(!(read_csr(mip) & MIP_MSIP));
@@ -136,12 +132,12 @@ static void wake_harts()
     if ((((~disabled_hart_mask & hart_mask) >> hart) & 1))
       *OTHER_HLS(hart)->ipi = 1; // wakeup the hart
 }
+#endif
 
 void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 {
   // Confirm console as early as possible
   query_hid(dtb);
-  query_htif(dtb);
 
   hart_init();
   hls_init(0); // this might get called again from parse_config_string
@@ -151,13 +147,13 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 
   query_mem(dtb);
   query_harts(dtb);
-  query_clint(dtb);
+  //  query_clint(dtb);
   //  query_plic(dtb);
 
-  wake_harts();
+  // wake_harts();
 
   plic_init();
-  hart_plic_init();
+  //  hart_plic_init();
   //prci_test();
   memory_init();
   boot_loader(dtb);
@@ -166,7 +162,7 @@ void init_first_hart(uintptr_t hartid, uintptr_t dtb)
 void init_other_hart(uintptr_t hartid, uintptr_t dtb)
 {
   hart_init();
-  hart_plic_init();
+  //  hart_plic_init();
   boot_other_hart(dtb);
 }
 

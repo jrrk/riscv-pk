@@ -1,6 +1,5 @@
 #include "mtrap.h"
 #include "mcall.h"
-#include "htif.h"
 #include "atomic.h"
 #include "bits.h"
 #include "vm.h"
@@ -12,6 +11,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "encoding.h"
 
 void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
 {
@@ -20,11 +20,7 @@ void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintpt
 
 static uintptr_t mcall_console_putchar(uint8_t ch)
 {
-  if (hid) {
-    hid_send(ch);
-  } else if (htif) {
-    htif_console_putchar(ch);
-  }
+  hid_send(ch);
   return 0;
 }
 
@@ -32,11 +28,7 @@ void poweroff(uint16_t code)
 {
   printm("Power off\n");
   finisher_exit(code);
-  if (htif) {
-    htif_poweroff();
-  } else {
-    while (1);
-  }
+  while (1);
 }
 
 void putstring(const char* s)
@@ -71,13 +63,7 @@ static void send_ipi(uintptr_t recipient, int event)
 
 static uintptr_t mcall_console_getchar()
 {
-  if (hid) {
-    return hid_recv();
-  } else if (htif) {
-    return htif_console_getchar();
-  } else {
-    return '\0';
-  }
+  return hid_recv();
 }
 
 static uintptr_t mcall_clear_ipi()
@@ -92,7 +78,12 @@ static uintptr_t mcall_shutdown()
 
 static uintptr_t mcall_set_timer(uint64_t when)
 {
-  *HLS()->timecmp = when;
+  if (CSR_MTIMECMP==0x321)
+    {
+      write_csr(0x321, when);
+    }
+  else
+    return -1;
   clear_csr(mip, MIP_STIP);
   set_csr(mie, MIP_MTIP);
   return 0;
@@ -177,6 +168,7 @@ send_ipi:
 
 void redirect_trap(uintptr_t epc, uintptr_t mstatus, uintptr_t badaddr)
 {
+  //  printm("redirect_trap(%lx)\n", epc);
   write_csr(sbadaddr, badaddr);
   write_csr(sepc, epc);
   write_csr(scause, read_csr(mcause));

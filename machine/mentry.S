@@ -220,9 +220,9 @@ do_reset:
   li x7, 0
   li x8, 0
   li x9, 0
-// save a0 and a1; arguments from previous boot loader stage:
-//  li x10, 0
-//  li x11, 0
+// Hardwire Device tree blob location
+  li x10, 0
+  li x11, 0x40008000
   li x12, 0
   li x13, 0
   li x14, 0
@@ -244,6 +244,31 @@ do_reset:
   li x30, 0
   li x31, 0
   csrw mscratch, x0
+// These are Ariane specific
+#define icache 0x700
+#define dcache 0x701
+#define cacheaddr 0x702
+#define sinten 0x130
+#define mtimecmp 0x321
+#define minten 0x330
+// To check illegal trap is caught properly        
+#define dummy 0x777
+
+        /* Catch illegal CSR inits */
+0:      la t0, 2f
+        csrw mtvec, t0
+        li t0, -1        
+        csrw minten, t0
+        csrw sinten, t0
+        csrw mtimecmp, t0
+/*
+        csrw icache, zero
+        csrw dcache, zero
+        */
+        li t0, 0x80000000 // The optimum value to use
+//        li t0, 0x88000000 // The hack that works for now
+        csrw cacheaddr, t0
+2:      
 
   # write mtvec and make sure it sticks
   la t0, trap_vector

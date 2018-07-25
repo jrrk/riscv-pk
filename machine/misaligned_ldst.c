@@ -69,12 +69,7 @@ void misaligned_load_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   for (intptr_t i = 0; i < len; i++)
     val.bytes[i] = load_uint8_t((void *)(addr + i), mepc);
 
-  if (!fp)
-    SET_RD(insn, regs, (intptr_t)val.intx << shift >> shift);
-  else if (len == 8)
-    SET_F64_RD(insn, regs, val.int64);
-  else
-    SET_F32_RD(insn, regs, val.intx);
+  SET_RD(insn, regs, (intptr_t)val.intx << shift >> shift);
 
   write_csr(mepc, npc);
 }

@@ -5,52 +5,9 @@
 #include "mtrap.h"
 #include "hid.h"
 
-volatile uint32_t *const sd_base = (uint32_t *)0x41010000;
-volatile uint8_t *hid_vga_ptr;
-static int addr_int;
+#define SCROLL
 
-void hid_console_putchar(unsigned char ch)
-{
-  switch(ch)
-    {
-    case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = ' '; break;
-    case 13: addr_int = addr_int & -128; break;
-    case 10:
-      {
-        int lmt = (addr_int|127)+1;
-#ifdef SCROLL      
-        while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = ' ';
-#else
-        // For simulation sanity
-        hid_vga_ptr[lmt] = ch;
-        addr_int = lmt;
-#endif
-        break;
-      }
-    default: hid_vga_ptr[addr_int++] = ch;
-    }
-  if (addr_int >= 4096-128)
-    {
-#ifdef SCROLL      
-      // this is where we scroll
-      for (addr_int = 0; addr_int < 4096; addr_int++)
-        if (addr_int < 4096-128)
-          hid_vga_ptr[addr_int] = hid_vga_ptr[addr_int+128];
-        else
-          hid_vga_ptr[addr_int] = ' ';
-      addr_int = 4096-256;
-#else
-      addr_int &= 127;
-#endif      
-    }
-}
-
-void hid_init(void *base) {
-  //  extern volatile uint32_t *sd_base;
-  //  sd_base = (uint32_t *)(0x00010000 + (char *)base);
-  hid_vga_ptr = (uint8_t *)base;
-  addr_int = 4096-256;
-}
+volatile uint32_t *const sd_base = (uint32_t *)sd_base_addr;
 
 void hid_send_irq(uint8_t data)
 {
@@ -59,7 +16,8 @@ void hid_send_irq(uint8_t data)
 
 void hid_send(uint8_t data)
 {
-  hid_console_putchar(data);
+  volatile uint32_t *const uart_base = (uint32_t *)uart_base_addr;
+  *uart_base = data;
 }
 
 void hid_send_string(const char *str) {
@@ -80,7 +38,7 @@ static inline uint8_t cr2lf(uint8_t ch)
 
 uint8_t hid_recv()
 {
-  volatile uint32_t * const keyb_base = (volatile uint32_t*)0x41000000;
+  volatile uint32_t * const keyb_base = (volatile uint32_t*)keyb_base_addr;
   uint32_t key = keyb_base[0];
   if ((1<<16) & ~key) /* FIFO not empty */
     {
@@ -108,19 +66,11 @@ void hid_enable_read_irq() {
 
 }
 
-size_t err = 0, eth = 0, ddr = 0, rom = 0, bram = 0, intc = 0, clin = 0, hid = 0;
+size_t err = 0, eth = 0, ddr = 0, rom = 0, bram = 0, intc = 0, clin = 0;
 
 void query_hid(uintptr_t fdt)
 {
-  uint64_t unknown = 0;
-  ddr = 0x80000000;
-  bram = 0x40000000;
-  eth = 0x41020000;
-  hid = 0x41008000;
-  if (hid)
-    {
-      hid_init((void *)hid);
-      printm("Video memory start %p\n", hid_vga_ptr);
-      if (ddr) printm("DDR memory start %p\n", (void *)ddr);
-    }
+  ddr = ddr_base_addr;
+  bram = bram_base_addr;
+  eth = eth_base_addr;
 }

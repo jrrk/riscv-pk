@@ -213,7 +213,7 @@ void query_mem(uintptr_t fdt)
   cb.done = mem_done;
   cb.extra = &scan;
 
-  mem_size = 0;
+  mem_size = 1 << 27;
   fdt_scan(fdt, &cb);
   assert (mem_size > 0);
 }
@@ -221,7 +221,7 @@ void query_mem(uintptr_t fdt)
 ///////////////////////////////////////////// HART SCAN //////////////////////////////////////////
 
 static uint32_t hart_phandles[MAX_HARTS];
-uint64_t hart_mask;
+uint64_t hart_mask = 1;
 
 struct hart_scan {
   const struct fdt_scan_node *cpu;
@@ -312,6 +312,8 @@ void query_harts(uintptr_t fdt)
 
 ///////////////////////////////////////////// CLINT SCAN /////////////////////////////////////////
 
+#if 0
+
 struct clint_scan
 {
   int compat;
@@ -363,6 +365,7 @@ static void clint_done(const struct fdt_scan_node *node, void *extra)
 
   scan->done = 1;
   mtime = (void*)((uintptr_t)scan->reg + 0xbff8);
+  printm("clint mtime = %p;\n", mtime);
 
   for (int index = 0; end - value > 0; ++index) {
     uint32_t phandle = bswap(value[0]);
@@ -527,6 +530,8 @@ void filter_plic(uintptr_t fdt)
   scan.done = 0;
   fdt_scan(fdt, &cb);
 }
+
+#endif
 
 //////////////////////////////////////////// COMPAT SCAN ////////////////////////////////////////
 
