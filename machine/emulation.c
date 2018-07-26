@@ -71,28 +71,16 @@ static inline void put64(volatile uint64_t *addr, uint64_t rslt)
   do_amo(*addr = rslt);
 }
 
-static inline void arch_local_irq_enable(void)
-{
-        set_csr(sstatus, CSR_MIE);
-}
-
-static inline void arch_local_irq_disable(void)
-{
-        clear_csr(sstatus, CSR_MIE);
-}
-
 #define AMO_WORD_1(typ, siz, expr)               \
       { \
         typ rd = 0xDEADBEEF; \
         volatile typ* addr = (volatile typ*)*rs1; \
         typ old = rs2 != regs ? *(typ *)rs2 : 0;              \
-        arch_local_irq_disable(); \
         rd = get##siz(addr); \
         put##siz(addr, expr); \
         if (dest != regs) { \
             *(typ *)dest = (typ)rd; \
           } \
-        arch_local_irq_enable(); \
         write_csr(mepc, mepc + 4); \
       } \
   
@@ -101,13 +89,11 @@ static inline void arch_local_irq_disable(void)
         typ rd = 0xDEADBEEF; \
         volatile typ* addr = (volatile typ*)*rs1; \
         /*        typ old = rs2 != regs ? *(typ *)rs2 : 0;              */ \
-        arch_local_irq_disable(); \
         lr = *rs1; \
         rd = get##siz(addr); \
         if (dest != regs) { \
             *(typ *)dest = (typ)rd; \
           } \
-        arch_local_irq_enable(); \
         write_csr(mepc, mepc + 4); \
       } \
   
@@ -116,7 +102,6 @@ static inline void arch_local_irq_disable(void)
         typ rd = 0xDEADBEEF; \
         volatile typ* addr = (volatile typ*)*rs1; \
         typ old = rs2 != regs ? *(typ *)rs2 : 0;              \
-        arch_local_irq_disable(); \
         if (lr == *rs1) { \
           rd = 0; \
           put##siz(addr, old); \
@@ -126,7 +111,6 @@ static inline void arch_local_irq_disable(void)
         if (dest != regs)  { \
           *dest = rd; \
         } \
-        arch_local_irq_enable(); \
         write_csr(mepc, mepc + 4); \
       } \
 
