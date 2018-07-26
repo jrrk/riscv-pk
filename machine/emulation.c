@@ -7,9 +7,9 @@
 #include "hid.h"
 #include <limits.h>
 
-static void hex(uint32_t h)
+static void hex4(uint32_t h)
 {
-  if (h>>4) hex(h>>4);
+  if (h>>4) hex4(h>>4);
   hid_send("0123456789ABCDEF"[h&0xF]);
 }
 
@@ -17,6 +17,12 @@ static void hex8(uint64_t h)
 {
   if (h>>4) hex8(h>>4);
   hid_send("0123456789ABCDEF"[h&0xF]);
+}
+
+static void emuldebug4(uint32_t h)
+{
+  hex4(h);
+  hid_send('\n');
 }
 
 static void emuldebug8(uint64_t h)
@@ -29,7 +35,7 @@ static void emuldebugm(const char *fmt, uint32_t insn)
 {
   hid_send_string(fmt);
   hid_send_string(" DASM(0x");
-  hex(insn);
+  hex4(insn);
   hid_send(')');
   hid_send('\n');
 }
@@ -415,9 +421,9 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                                     write_csr(mepc, mepc + 2);
                                     break;
                                   default:
-                                    emuldebugm("Unknown emulation", insn);
-                                    return redirect_trap(mepc, mstatus, insn);
-                                    break;
+				    {
+				      return redirect_trap(mepc, mstatus, insn);
+				    }
                                   }
                               }
                           }
@@ -433,6 +439,12 @@ void illegal_insn_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 {
   uintptr_t mstatus = read_csr(mstatus);
   insn_t insn = read_csr(mbadaddr);
+#if 0
+  if (!insn)
+    insn = get_insn(mepc, &mstatus);
+  if (!insn)
+    redirect_trap(mepc, mstatus, insn);
+#endif  
   emulate_missing_insn(regs, mcause, mepc, mstatus, insn);
 }
 

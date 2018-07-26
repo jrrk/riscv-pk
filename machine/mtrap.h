@@ -67,6 +67,7 @@ void enter_supervisor_mode(void (*fn)(uintptr_t), uintptr_t arg0, uintptr_t arg1
   __attribute__((noreturn));
 void boot_loader(uintptr_t dtb);
 void boot_other_hart(uintptr_t dtb);
+void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc);
 
 static inline void wfi()
 {
@@ -85,11 +86,7 @@ static inline void wfi()
 #define MENTRY_IPI_OFFSET (MENTRY_HLS_OFFSET)
 #define MENTRY_IPI_PENDING_OFFSET (MENTRY_HLS_OFFSET + REGBYTES)
 
-#ifdef __riscv_flen
-# define SOFT_FLOAT_CONTEXT_SIZE 0
-#else
-# define SOFT_FLOAT_CONTEXT_SIZE (8 * 32)
-#endif
+#define SOFT_FLOAT_CONTEXT_SIZE (8 * 32)
 #define HLS_SIZE 64
 #define INTEGER_CONTEXT_SIZE (32 * REGBYTES)
 
