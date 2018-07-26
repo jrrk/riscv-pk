@@ -114,6 +114,71 @@ static inline void put64(volatile uint64_t *addr, uint64_t rslt)
         write_csr(mepc, mepc + 4); \
       } \
 
+DECLARE_EMULATION_FUNC(emulate_system_opcode)
+{
+  int rs1_num = (insn >> 15) & 0x1f;
+  uintptr_t rs1_val = GET_RS1(insn, regs);
+  int csr_num = (uint32_t)insn >> 20;
+  uintptr_t new_csr_val, csr_val = 0;
+
+  uintptr_t counteren = -1;
+  int do_write = rs1_num;
+  int rm = GET_RM(insn);
+
+  if (EXTRACT_FIELD(mstatus, MSTATUS_MPP) == PRV_U)
+    counteren = read_csr(scounteren);
+
+  switch (csr_num)
+    {
+    case CSR_FRM:
+      if ((mstatus & MSTATUS_FS) == 0) break;
+      csr_val = GET_FRM();
+      break;
+    case CSR_FFLAGS:
+      if ((mstatus & MSTATUS_FS) == 0) break;
+      csr_val = GET_FFLAGS();
+      break;
+    case CSR_FCSR:
+      if ((mstatus & MSTATUS_FS) == 0) break;
+      csr_val = GET_FCSR();
+      break;
+    default:
+      emuldebugm("unsupported CSR number", insn);
+      return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+    }
+  
+  switch (rm)
+  {
+    case 0: return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+    case 1: new_csr_val = rs1_val; do_write = 1; break;
+    case 2: new_csr_val = csr_val | rs1_val; break;
+    case 3: new_csr_val = csr_val & ~rs1_val; break;
+    case 4: return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+    case 5: new_csr_val = rs1_num; do_write = 1; break;
+    case 6: new_csr_val = csr_val | rs1_num; break;
+    case 7: new_csr_val = csr_val & ~rs1_num; break;
+    default:
+      emuldebug4(rm);
+  }
+
+  if (do_write)
+    {
+      switch (csr_num)
+        {
+#if defined(PK_ENABLE_FP_EMULATION)
+        case CSR_FRM: SET_FRM(new_csr_val); break;
+        case CSR_FFLAGS: SET_FFLAGS(new_csr_val); break;
+        case CSR_FCSR: SET_FCSR(new_csr_val); break;
+#endif
+        default:
+          return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
+        }
+
+    }
+
+  SET_RD(insn, regs, csr_val);
+}
+
 DECLARE_EMULATION_FUNC(emulate_missing_insn)
 {
     uintptr_t rd;
@@ -209,18 +274,43 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
               {
               case MATCH_FADD_S:
               case MATCH_FADD_D:
-              case MATCH_FADD_Q:
+                emulate_fadd(regs, mcause, mepc, mstatus, insn);
+                write_csr(mepc, mepc + 4);
+                break;
               case MATCH_FSUB_S:
               case MATCH_FSUB_D:
-              case MATCH_FSUB_Q:
+                emulate_fsub(regs, mcause, mepc, mstatus, insn);
+                write_csr(mepc, mepc + 4);
+                break;
               case MATCH_FMUL_S:
               case MATCH_FMUL_D:
+                emulate_fmul(regs, mcause, mepc, mstatus, insn);
+                write_csr(mepc, mepc + 4);
+                break;
+              case MATCH_FDIV_S:
+              case MATCH_FDIV_D:
+                emulate_fdiv(regs, mcause, mepc, mstatus, insn);
+                write_csr(mepc, mepc + 4);
+                break;
               case MATCH_FMUL_Q:
+              case MATCH_FADD_Q:
+              case MATCH_FSUB_Q:
+              case MATCH_FDIV_Q:
                 emuldebugm("Skipped 4-byte floating point insn", insn);
                 write_csr(mepc, mepc + 4);
                 break;
               default: switch (insn & mask_fld_fst)
                   {
+                  case MATCH_CSRRC:
+                  case MATCH_CSRRCI:
+                  case MATCH_CSRRS:
+                  case MATCH_CSRRSI:
+                  case MATCH_CSRRW:
+                  case MATCH_CSRRWI:
+                    // emuldebugm("Emulating 4-byte CSR insn", insn);
+                    emulate_system_opcode(regs, mcause, mepc, mstatus, insn);
+                    write_csr(mepc, mepc + 4);
+                    break;
                   case MATCH_FSD:
                     {
                       uintptr_t addr = GET_RS1(insn, regs) + IMM_S(insn);
@@ -261,41 +351,63 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                       {
                       case MATCH_FEQ_S:
                       case MATCH_FEQ_D:
-                      case MATCH_FEQ_Q:
                       case MATCH_FLE_S:
                       case MATCH_FLE_D:
-                      case MATCH_FLE_Q:
                       case MATCH_FLT_S:
                       case MATCH_FLT_D:
+                            emulate_fcmp(regs, mcause, mepc, mstatus, insn);
+                            write_csr(mepc, mepc + 4);
+                            break;
+                      case MATCH_FSGNJN_D:
+                      case MATCH_FSGNJN_S:
+                      case MATCH_FSGNJ_S:
+                      case MATCH_FSGNJX_D:
+                      case MATCH_FSGNJX_S:
+                            emulate_fsgnj(regs, mcause, mepc, mstatus, insn);
+                            write_csr(mepc, mepc + 4);
+                            break;
+                      case MATCH_FEQ_Q:
+                      case MATCH_FLE_Q:
                       case MATCH_FLT_Q:
-                      case  MATCH_FSGNJN_D:
-                      case  MATCH_FSGNJN_Q:
-                      case  MATCH_FSGNJN_S:
-                      case  MATCH_FSGNJ_Q:
-                      case  MATCH_FSGNJ_S:
-                      case  MATCH_FSGNJX_D:
-                      case  MATCH_FSGNJX_Q:
-                      case  MATCH_FSGNJX_S:
+                      case MATCH_FSGNJN_Q:
+                      case MATCH_FSGNJ_Q:
+                      case MATCH_FSGNJX_Q:
                         emuldebugm("Skipped 4-byte floating point insn", insn);
                         write_csr(mepc, mepc + 4);
                         break;
                       default: switch(insn & mask_fmv)
                           {
-                          case MATCH_FMV_X_W:
                           case MATCH_FMV_X_D:
+                            emulate_fmv_if(regs, mcause, mepc, mstatus, insn);
+                            write_csr(mepc, mepc + 4);
+                            break;
+                          case MATCH_FMV_D_X:
+                            emulate_fmv_fi(regs, mcause, mepc, mstatus, insn);
+                            write_csr(mepc, mepc + 4);
+                            break;
+                          case MATCH_FMV_X_W:
                           case MATCH_FMV_X_Q:
                           case MATCH_FMV_W_X:
-                          case MATCH_FMV_D_X:
                           case MATCH_FMV_Q_X:
                             emuldebugm("Skipped 4-byte floating point insn", insn);
                             write_csr(mepc, mepc + 4);
                             break;
                           default: switch(insn & mask_fcvt)
                               {
+                              case  MATCH_FCVT_S_L:
+                              case  MATCH_FCVT_S_W:
+                                emulate_fcvt_fi(regs, mcause, mepc, mstatus, insn);
+                                write_csr(mepc, mepc + 4);
+                                break;
+                              case  MATCH_FCVT_D_S:
+                              case  MATCH_FCVT_S_D:
+                                emulate_fcvt_ff(regs, mcause, mepc, mstatus, insn);
+                                write_csr(mepc, mepc + 4);
+                                break;
+                              case  MATCH_FCVT_W_S:
                               case  MATCH_FCVT_D_L:
                               case  MATCH_FCVT_D_LU:
                               case  MATCH_FCVT_D_Q:
-                              case  MATCH_FCVT_D_S:
                               case  MATCH_FCVT_D_W:
                               case  MATCH_FCVT_D_WU:
                               case  MATCH_FCVT_L_D:
@@ -310,15 +422,11 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                               case  MATCH_FCVT_Q_S:
                               case  MATCH_FCVT_Q_W:
                               case  MATCH_FCVT_Q_WU:
-                              case  MATCH_FCVT_S_D:
-                              case  MATCH_FCVT_S_L:
                               case  MATCH_FCVT_S_LU:
                               case  MATCH_FCVT_S_Q:
-                              case  MATCH_FCVT_S_W:
                               case  MATCH_FCVT_S_WU:
                               case  MATCH_FCVT_W_D:
                               case  MATCH_FCVT_W_Q:
-                              case  MATCH_FCVT_W_S:
                               case  MATCH_FCVT_WU_D:
                               case  MATCH_FCVT_WU_Q:
                               case  MATCH_FCVT_WU_S:
@@ -399,14 +507,11 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                                       write_csr(mepc, mepc + 2);
                                       break;
                                     }
-                                  case MATCH_CSRRS:
-                                  case MATCH_CSRRSI:
-                                    emuldebugm("Skipped 2-byte floating point insn", insn);
-                                    write_csr(mepc, mepc + 2);
-                                    break;
                                   default:
 				    {
-				      return redirect_trap(mepc, mstatus, insn);
+                                      emuldebugm("Skipped unknown emulation insn", insn);
+                                      write_csr(mepc, mepc + 4);
+                                      //				      return redirect_trap(mepc, mstatus, insn);
 				    }
                                   }
                               }
@@ -432,76 +537,9 @@ void illegal_insn_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
   emulate_missing_insn(regs, mcause, mepc, mstatus, insn);
 }
 
-static inline int emulate_read_csr(int num, uintptr_t mstatus, uintptr_t* result)
-{
-  uintptr_t counteren = -1;
-  if (EXTRACT_FIELD(mstatus, MSTATUS_MPP) == PRV_U)
-    counteren = read_csr(scounteren);
-
-  switch (num)
-  {
-#if !defined(__riscv_flen) && defined(PK_ENABLE_FP_EMULATION)
-    case CSR_FRM:
-      if ((mstatus & MSTATUS_FS) == 0) break;
-      *result = GET_FRM();
-      return 0;
-    case CSR_FFLAGS:
-      if ((mstatus & MSTATUS_FS) == 0) break;
-      *result = GET_FFLAGS();
-      return 0;
-    case CSR_FCSR:
-      if ((mstatus & MSTATUS_FS) == 0) break;
-      *result = GET_FCSR();
-      return 0;
-#endif
-  }
-  return -1;
-}
-
-static inline int emulate_write_csr(int num, uintptr_t value, uintptr_t mstatus)
-{
-  switch (num)
-  {
-#if !defined(__riscv_flen) && defined(PK_ENABLE_FP_EMULATION)
-    case CSR_FRM: SET_FRM(value); return 0;
-    case CSR_FFLAGS: SET_FFLAGS(value); return 0;
-    case CSR_FCSR: SET_FCSR(value); return 0;
-#endif
-  }
-  return -1;
-}
-
 __attribute__((noinline))
 DECLARE_EMULATION_FUNC(truly_illegal_insn)
 {
   return redirect_trap(mepc, mstatus, insn);
 }
 
-DECLARE_EMULATION_FUNC(emulate_system_opcode)
-{
-  int rs1_num = (insn >> 15) & 0x1f;
-  uintptr_t rs1_val = GET_RS1(insn, regs);
-  int csr_num = (uint32_t)insn >> 20;
-  uintptr_t csr_val, new_csr_val;
-
-  if (emulate_read_csr(csr_num, mstatus, &csr_val))
-    return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
-
-  int do_write = rs1_num;
-  switch (GET_RM(insn))
-  {
-    case 0: return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
-    case 1: new_csr_val = rs1_val; do_write = 1; break;
-    case 2: new_csr_val = csr_val | rs1_val; break;
-    case 3: new_csr_val = csr_val & ~rs1_val; break;
-    case 4: return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
-    case 5: new_csr_val = rs1_num; do_write = 1; break;
-    case 6: new_csr_val = csr_val | rs1_num; break;
-    case 7: new_csr_val = csr_val & ~rs1_num; break;
-  }
-
-  if (do_write && emulate_write_csr(csr_num, new_csr_val, mstatus))
-    return truly_illegal_insn(regs, mcause, mepc, mstatus, insn);
-
-  SET_RD(insn, regs, csr_val);
-}
