@@ -395,7 +395,13 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                           default: switch(insn & mask_fcvt)
                               {
                               case  MATCH_FCVT_S_L:
+                              case  MATCH_FCVT_S_LU:
                               case  MATCH_FCVT_S_W:
+                              case  MATCH_FCVT_S_WU:
+                              case  MATCH_FCVT_D_L:
+                              case  MATCH_FCVT_D_LU:
+                              case  MATCH_FCVT_D_W:
+                              case  MATCH_FCVT_D_WU:
                                 emulate_fcvt_fi(regs, mcause, mepc, mstatus, insn);
                                 write_csr(mepc, mepc + 4);
                                 break;
@@ -405,31 +411,28 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                                 write_csr(mepc, mepc + 4);
                                 break;
                               case  MATCH_FCVT_W_S:
-                              case  MATCH_FCVT_D_L:
-                              case  MATCH_FCVT_D_LU:
-                              case  MATCH_FCVT_D_Q:
-                              case  MATCH_FCVT_D_W:
-                              case  MATCH_FCVT_D_WU:
-                              case  MATCH_FCVT_L_D:
-                              case  MATCH_FCVT_L_Q:
+                              case  MATCH_FCVT_W_D:
+                              case  MATCH_FCVT_WU_S:
+                              case  MATCH_FCVT_WU_D:
                               case  MATCH_FCVT_L_S:
+                              case  MATCH_FCVT_L_D:
                               case  MATCH_FCVT_LU_D:
-                              case  MATCH_FCVT_LU_Q:
                               case  MATCH_FCVT_LU_S:
+                                emulate_fcvt_if(regs, mcause, mepc, mstatus, insn);
+                                write_csr(mepc, mepc + 4);
+                                break;
+                              case  MATCH_FCVT_D_Q:
+                              case  MATCH_FCVT_L_Q:
+                              case  MATCH_FCVT_LU_Q:
                               case  MATCH_FCVT_Q_D:
                               case  MATCH_FCVT_Q_L:
                               case  MATCH_FCVT_Q_LU:
                               case  MATCH_FCVT_Q_S:
                               case  MATCH_FCVT_Q_W:
                               case  MATCH_FCVT_Q_WU:
-                              case  MATCH_FCVT_S_LU:
                               case  MATCH_FCVT_S_Q:
-                              case  MATCH_FCVT_S_WU:
-                              case  MATCH_FCVT_W_D:
                               case  MATCH_FCVT_W_Q:
-                              case  MATCH_FCVT_WU_D:
                               case  MATCH_FCVT_WU_Q:
-                              case  MATCH_FCVT_WU_S:
                                 emuldebugm("Skipped 4-byte floating point insn", insn);
                                 write_csr(mepc, mepc + 4);
                                 break;
@@ -511,7 +514,7 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
 				    {
                                       emuldebugm("Skipped unknown emulation insn", insn);
                                       write_csr(mepc, mepc + 4);
-                                      //				      return redirect_trap(mepc, mstatus, insn);
+                                      return redirect_trap(mepc, mstatus, insn);
 				    }
                                   }
                               }
