@@ -512,9 +512,16 @@ DECLARE_EMULATION_FUNC(emulate_missing_insn)
                                     }
                                   default:
 				    {
-                                      emuldebugm("Skipped unknown emulation insn", insn);
-                                      write_csr(mepc, mepc + 4);
-                                      return redirect_trap(mepc, mstatus, insn);
+                                      extern void __redirect_trap();
+                                      emuldebugm("Encountered unknown emulation insn", insn);
+                                      write_csr(sbadaddr, insn);
+                                      write_csr(sepc, mepc);
+                                      write_csr(scause, 2);
+                                      status = INSERT_FIELD(status, MSTATUS_MPP, PRV_S);
+                                      status = INSERT_FIELD(status, MSTATUS_MPIE, 0);
+                                      write_csr(mstatus, status);
+                                      write_csr(mepc, read_csr(stvec));
+                                      return __redirect_trap();
 				    }
                                   }
                               }
@@ -531,12 +538,10 @@ void illegal_insn_trap(uintptr_t* regs, uintptr_t mcause, uintptr_t mepc)
 {
   uintptr_t mstatus = read_csr(mstatus);
   insn_t insn = read_csr(mbadaddr);
-#if 0
   if (!insn)
     insn = get_insn(mepc, &mstatus);
   if (!insn)
     redirect_trap(mepc, mstatus, insn);
-#endif  
   emulate_missing_insn(regs, mcause, mepc, mstatus, insn);
 }
 
