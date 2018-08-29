@@ -4,7 +4,6 @@
 #include "fp_emulation.h"
 #include "fdt.h"
 #include "uart.h"
-#include "uart16550.h"
 #include "finisher.h"
 #include "disabled_hart_mask.h"
 #include "htif.h"
@@ -137,12 +136,12 @@ static void wake_harts()
       *OTHER_HLS(hart)->ipi = 1; // wakeup the hart
 }
 
-void init_first_hart(uintptr_t hartid, uintptr_t dtb)
+void init_first_hart()
 {
+  uintptr_t hartid = 0;
+  uintptr_t dtb = 0x10080;
   // Confirm console as early as possible
   query_uart(dtb);
-  query_uart16550(dtb);
-  query_htif(dtb);
   printm("bbl loader\r\n");
 
   hart_init();
