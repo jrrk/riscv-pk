@@ -19,8 +19,15 @@ void __attribute__((noreturn)) bad_trap(uintptr_t* regs, uintptr_t dummy, uintpt
 
 static uintptr_t mcall_console_putchar(uint8_t ch)
 {
-    uart_putchar(ch);
+  uart_putchar(ch);
   return 0;
+}
+
+void poweroff(uint16_t code)
+{
+  printm("Power off\n");
+  finisher_exit(code);
+  while (1);
 }
 
 void putstring(const char* s)
@@ -55,7 +62,7 @@ static void send_ipi(uintptr_t recipient, int event)
 
 static uintptr_t mcall_console_getchar()
 {
-    return uart_getchar();
+  return uart_getchar();
 }
 
 static uintptr_t mcall_clear_ipi()
@@ -200,17 +207,5 @@ void trap_from_machine_mode(uintptr_t* regs, uintptr_t dummy, uintptr_t mepc)
       return machine_page_fault(regs, dummy, mepc);
     default:
       bad_trap(regs, dummy, mepc);
-  }
-}
-
-void poweroff(uint16_t code)
-{
-  printm("Power off\r\n");
-  finisher_exit(code);
-  if (htif) {
-    htif_poweroff();
-  } else {
-    send_ipi_many(0, IPI_HALT);
-    while (1) { asm volatile ("wfi\n"); }
   }
 }
