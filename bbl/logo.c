@@ -10,7 +10,7 @@ static int addr_int;
 
 static void logo_putchar(unsigned char ch)
 {
-  enum {colour=0xC00};
+  enum {colour=0x300};
   int lmt, blank = ' '|colour;
   if (ch==10)
     {
